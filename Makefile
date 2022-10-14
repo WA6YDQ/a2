@@ -1,5 +1,5 @@
 all:	a2.o
-	cc -o a2 a2.o
+	$(CC) $(FLAGS) -o a2 a2.o
 
 CC = cc 
 FLAGS = -Wall -pedantic -Wextra
