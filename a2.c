@@ -137,24 +137,22 @@ void view(char line[LINESIZE]) {
 void showfiles() {
 	glob_t globlist;
 	int i=0;
-	if (glob("*", GLOB_PERIOD, NULL, &globlist) == GLOB_NOSPACE) {
-		printf("Aborted.\n");
+	// by using *, . and .. will ALWAYS be found, so NOMATCH is an error
+	int retval = glob("*", GLOB_PERIOD, NULL, &globlist);
+    if (retval == GLOB_NOSPACE || \
+		 retval == GLOB_ABORTED || \
+		 retval == GLOB_NOMATCH) {
+		printf("glob() error: Aborted.\n");
+        globfree(&globlist);
 		return;
-	}
-	if (glob("*", GLOB_PERIOD, NULL, &globlist) == GLOB_NOMATCH) {
-        printf("Aborted.\n");
-        return;
     }
-	if (glob("*", GLOB_PERIOD, NULL, &globlist) == GLOB_ABORTED) {
-		printf("Aborted.\n");
-		return;
-	}
 	printf("\nFiles:\n");
 	while (globlist.gl_pathv[i]) {
 		if (i > 1) 	// don't show . or ..
 			printf("%s\n",globlist.gl_pathv[i]);
 		i++;
 	}
+	globfree(&globlist);
 	printf("\n");
 	return;
 }
@@ -187,14 +185,15 @@ void help() {	// all commands are prefaced with a .
 /* ************ */
 
 int main() {
+
 	// setup the buffer, exit on error
 	buf = (char *)malloc(BUFSIZE*sizeof(char));
 	if (buf==NULL) {
-		printf("Memory Error\n");
+		printf("Memory Error (fatal)\n");
 		return 1;
 	}
 	memset(buf,0,BUFSIZE);		// initial clear
-	int SAVED = 0;
+	int SAVED = 0;				// file save flag
 	char line[BUFSIZE+1];
 	int linelen = 0;
 
@@ -208,6 +207,7 @@ int main() {
 		// test commands
 		if (strncmp(line,".quit",5)==0) {	// exit program
 			free(buf);
+			if (!SAVED) printf("(buffer not saved on exit)\n");
 			printf("Exiting\n");
 			return 0;
 		}
@@ -222,6 +222,7 @@ int main() {
 		if (strncmp(line,".new",4)==0) {	// clear buffer
 			memset(buf,0,BUFSIZE);
 			pos = 0;
+			if (!SAVED) printf("(buffer not saved)\n");
 			printf("Buffer Cleared\n");
 			SAVED=0;
 			continue;
@@ -277,6 +278,7 @@ int main() {
 	}
 
 	// will likely never get here
+	free(buf);
 	return 0;
 }
 
